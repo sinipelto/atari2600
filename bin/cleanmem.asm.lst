@@ -1,0 +1,29 @@
+------- FILE cleanmem.asm LEVEL 1 PASS 1
+      1  0000					      processor	6502	; define used processor chip
+      2  0000 ????
+      3  0000 ????				      seg	code	; segment "code"
+      4  f000					      org	$F000	; start address
+      5  f000
+      6  f000				   Start
+      7  f000		       78		      sei		; disable interrupts flag = 0
+      8  f001		       d8		      cld		; clear decimal flag
+      9  f002		       a2 ff		      ldx	#$FF	; loads into X value FF
+     10  f004		       9a		      txs		; transfer X to SP
+     11  f005
+     12  f005							;;;;;;;;;;;;;;;;;;; Clear mem from $FF to $00 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     13  f005		       a9 00		      lda	#0	; A = 0
+     14  f007		       a2 ff		      ldx	#$FF	; X = FF
+     15  f009		       a0 00		      ldy	#0	; Y = 0
+     16  f00b
+     17  f00b							; Initially set mem 0xFF to 0
+     18  f00b		       85 ff		      sta	$FF	; Store A(=0) into mem pos $FF
+     19  f00d
+     20  f00d				   MemLoop
+     21  f00d		       ca		      dex		; X--
+     22  f00e		       95 00		      sta	$0,x	; Store A into $0 + X
+     23  f010		       d0 fb		      bne	MemLoop	; while X != 0
+     24  f012
+     25  f012							;;;;;;;;;;;;;;;;; Fill rom size 4kB ;;;;;;;;;;;;;;;;;;;;;;;
+     26  fffc					      org	$FFFC	; Set pos to cartrigde END
+     27  fffc		       00 f0		      .word.w	Start	; Start -> Reset vector => FFFC
+     28  fffe		       00 f0		      .word.w	Start	; Start once more (interrupt) => FFFE

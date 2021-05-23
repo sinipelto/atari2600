@@ -10,6 +10,7 @@ Start:
     txs                 ; transfer X to SP
 
 ;;;;;;;;;;;;;;;;;;; Clear mem from $FF to $00 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; Clear registers
     lda #0              ; A = 0
     ldx #$FF            ; X = FF
     ldy #0              ; Y = 0 (fixes crash occurring by sta $FF)

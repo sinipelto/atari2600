@@ -1,4 +1,4 @@
-;;;;;;;;;; Initialization ;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;; Initialization ;;;;;;;;;;;;;;;;;;;
     PROCESSOR 6502      ; MOS 6502/6507
 
     INCLUDE "vcs.h"
@@ -13,7 +13,7 @@ Start:
     LDA #2      ; A = 2 => Start bit
     LDY #0      ; Y = 0 => Stop bit
 
-;;;;;;;;;;;; Start new frame, turn oon VBLANK and VSYNC ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;; Start new frame, turn oon VBLANK and VSYNC ;;;;;;;;;;;;;;
 NextFrame:
     STA VBLANK      ; start VBLANK
 
@@ -45,7 +45,16 @@ LoopVisible:
     DEX
     BNE LoopVisible
 
+;;;;;;;;; Generate VBLANK lines (overscan, 30 lines) ;;;;;;;;;;
+    STA VBLANK      ; restart vblank
+    LDX #30         ; X = 30
 
+LoopOverscan:
+    STA WSYNC       ; draw line
+    DEX             ; X--
+    BNE LoopOverscan    ; While X != 0
+
+    JMP NextFrame   ; Goto next frame
 
 ;;;; Define end of cartridge ;;;;;;;
 End:

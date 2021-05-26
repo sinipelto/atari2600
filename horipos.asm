@@ -33,10 +33,10 @@ Reset:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialize variables
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ldx #40         ; X = 40 (C flag checks A >= X)
+    ldx #40         ; X = 40
     stx P0XBegin    ; set P0Beg = X
 
-    ldx #81         ; X = 80 + 1 (C flag checks A < X -> missing A == X)
+    ldx #80         ; X = 80
     stx P0XEnd      ; set P0End = X
 
     lda P0XBegin
@@ -162,10 +162,9 @@ Overscan:
 ;; Ensure position stays in pre-set boundaries and reset position if does
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda P0XPos
-    sec
     cmp P0XEnd
-    BCS ResetPos    ; if a >= x, branch
-    inc P0XPos      ; a < X, pos++
+    BPL ResetPos    ; if a > x, branch
+    inc P0XPos      ; a <= X, pos++
     jmp StartFrame  ; goto next frame
 
 ; if pos >= limit, reset the X position to start

@@ -13,7 +13,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     seg.u Variables
     org $80
-P0XPos   byte      ; sprite X coordinate
+
+P0XPos        byte    ; sprite X coordinate
+P0XBegin      byte    ; start moving X pos from here
+P0XEnd        byte    ; stop moving X pos here and start again
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Start our ROM code segment starting at $F000.
@@ -30,8 +33,14 @@ Reset:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialize variables
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    lda #50
+    lda P0XBegin
     sta P0XPos     ; initialize player X coordinate
+
+    ldx #40         ; X = 40 (C flag checks A >= X)
+    stx P0XBegin    ; set P0Beg = X
+
+    ldx #81         ; X = 80 + 1 (C flag checks A < X -> missing A == X)
+    stx P0XEnd      ; set P0End = X
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Start a new frame by configuring VBLANK and VSYNC
@@ -57,6 +66,30 @@ StartFrame:
     and #$7F       ; same as AND 01111111, forces bit 7 to zero
                    ; keeping the result positive
 
+; Do the border checking at this position 
+; where current P0XPos has just been loaded into register
+
+; first, check if we are inside the lower boundary
+CheckLower:
+    SEC             ; C = 1
+    CMP P0XBegin        ; A == X ?
+    BCS CheckUpper   ; A (pos) >= X (begin) -> jump
+    ; if A (pos) < limit
+    LDA P0XBegin    ; reset pos to min 
+    STA P0XPos      ; and update memory
+    JMP ContinueScanlines   ; already reset - skip upper boundary check
+
+; then, ensure we are under the upper boundary
+CheckUpper:
+    SEC
+    CMP P0XEnd
+    BCC ContinueScanlines   ; A (pos) < X (end)
+    ; if A >= limit, reset
+    LDA P0XBegin
+    STA P0XPos
+
+; jump to here if checks pass
+ContinueScanlines
     sec            ; set carry flag before subtraction
 
     sta WSYNC      ; wait for next scanline
@@ -67,19 +100,20 @@ DivideLoop:
     bcs DivideLoop ; loop while carry flag is still set
 
     eor #7         ; adjust the remainder in A between -8 and 7
+
+    REPEAT 4
     asl            ; shift left by 4, as HMP0 uses only 4 bits
-    asl
-    asl
-    asl
+    REPEND
+
     sta HMP0       ; set smooth position value
     sta RESP0      ; fix rough position
     sta WSYNC      ; wait for next scanline
     sta HMOVE      ; apply the fine position offset
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Let the TIA output the 37 recommended lines of VBLANK
+;; Let the TIA output the 35 (37 - 2) recommended lines of VBLANK
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    REPEAT 37
+    REPEAT 35
         sta WSYNC
     REPEND
 
@@ -89,11 +123,11 @@ DivideLoop:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Draw the 192 visible scanlines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    REPEAT 60
-        sta WSYNC  ; wait for 60 empty scanlines
+    REPEAT 90
+        sta WSYNC  ; wait for empty scanlines
     REPEND
 
-    ldy 8          ; counter to draw 8 rows of bitmap
+    ldy #8          ; counter to draw 8 rows of bitmap
 DrawBitmap:
     lda P0Bitmap,Y ; load player bitmap slice of data
     sta GRP0       ; set graphics for player 0 slice
@@ -109,8 +143,8 @@ DrawBitmap:
     lda #0
     sta GRP0       ; disable P0 bitmap graphics
 
-    REPEAT 124
-        sta WSYNC  ; wait for remaining 124 empty scanlines
+    REPEAT 94
+        sta WSYNC  ; wait for remaining empty scanlines
     REPEND
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

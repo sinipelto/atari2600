@@ -33,14 +33,14 @@ Reset:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialize variables
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    lda P0XBegin
-    sta P0XPos     ; initialize player X coordinate
-
     ldx #40         ; X = 40 (C flag checks A >= X)
     stx P0XBegin    ; set P0Beg = X
 
     ldx #81         ; X = 80 + 1 (C flag checks A < X -> missing A == X)
     stx P0XEnd      ; set P0End = X
+
+    lda P0XBegin
+    sta P0XPos     ; initialize player X coordinate
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Start a new frame by configuring VBLANK and VSYNC
@@ -69,27 +69,27 @@ StartFrame:
 ; Do the border checking at this position 
 ; where current P0XPos has just been loaded into register
 
-; first, check if we are inside the lower boundary
-CheckLower:
-    SEC             ; C = 1
-    CMP P0XBegin        ; A == X ?
-    BCS CheckUpper   ; A (pos) >= X (begin) -> jump
-    ; if A (pos) < limit
-    LDA P0XBegin    ; reset pos to min 
-    STA P0XPos      ; and update memory
-    JMP ContinueScanlines   ; already reset - skip upper boundary check
+; ; first, check if we are inside the lower boundary
+; CheckLower:
+;     SEC             ; C = 1
+;     CMP P0XBegin        ; A == X ?
+;     BCS CheckUpper   ; A (pos) >= X (begin) -> jump
+;     ; if A (pos) < limit
+;     LDA P0XBegin    ; reset pos to min 
+;     STA P0XPos      ; and update memory
+;     JMP ContinueScanlines   ; already reset - skip upper boundary check
 
-; then, ensure we are under the upper boundary
-CheckUpper:
-    SEC
-    CMP P0XEnd
-    BCC ContinueScanlines   ; A (pos) < X (end)
-    ; if A >= limit, reset
-    LDA P0XBegin
-    STA P0XPos
+; ; then, ensure we are under the upper boundary
+; CheckUpper:
+;     SEC
+;     CMP P0XEnd
+;     BCC ContinueScanlines   ; A (pos) < X (end)
+;     ; if A >= limit, reset
+;     LDA P0XBegin
+;     STA P0XPos
 
-; jump to here if checks pass
-ContinueScanlines
+; ; jump to here if checks pass
+; ContinueScanlines
     sec            ; set carry flag before subtraction
 
     sta WSYNC      ; wait for next scanline
@@ -157,10 +157,21 @@ Overscan:
         sta WSYNC
     REPEND
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Increment X coordinate before next frame for animation.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    inc P0XPos
+;; Ensure position stays in pre-set boundaries and reset position if does
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    lda P0XPos
+    sec
+    cmp P0XEnd
+    BCS ResetPos    ; if a >= x, branch
+    inc P0XPos      ; a < X, pos++
+    jmp StartFrame  ; goto next frame
+
+; if pos >= limit, reset the X position to start
+ResetPos:
+    LDX P0XBegin    ; read X = begin
+    STX P0XPos      ; Pos = begin
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Loop to next frame

@@ -1,22 +1,29 @@
-;;;;;;;;;;;;;;; Basic configurations ;;;;;;;;;;;;;;;
-    PROCESSOR 6502      ; processor MOS 6502/6507
+;;; processor ;;;
+     PROCESSOR 6502
 
-    ; Macros for Atari 2600
-    INCLUDE "vcs.h"
-    INCLUDE "macro.h"
+;;; assembly includes ;;;
+     INCLUDE "macro.h"
+     INCLUDE "vcs.h"
 
-    SEG CODE            ; segment CODE
-    ORG $F000           ; ROM area begin
+;;; ram ;;;
+    SEG.U VARIABLES
+    ORG $80
 
-;;;;;;;;;;;;; Reset and initialize system ;;;;;;;;;;;;;
+Var  .byte     ; RAM variable
+
+;;; move to rom start ;;;
+     SEG ROM
+     ORG $F000
+
+;;; reset vcs REGS, RAM, TIA ;;;
 Reset:
-    CLEAN_START         ; clear RAM and registers, reset flags
+     CLEAN_START
 
-;;;;;;;;;; Define start point ;;;;;;;;;;;;
-Start:
+;;;; init variables ;;;;
+     LDX #0
+     STA Var
 
-;;;;;;; Define end of cartridge ;;;;;;;
-End:
-    ORG $FFFC       ; goto cartridge end - 4 bytes
-    .word Reset     ; add 2 bytes and Start address (FFFC-FFFD)
-    .word Reset     ; another 2 bytes and Start address (FFFE-FFFF)
+;;;; Define rom end ;;;;
+     ORG $FFFC
+     .word Reset
+     .word Reset    ; rom launch endpoint

@@ -1,32 +1,59 @@
-;;; processor ;;;
-     PROCESSOR 6502
+;;;; processor ;;;;
+     PROCESSOR 6502 ; MOS 6502 CPU
 
-;;; assembly includes ;;;
+;;;; assembly includes ;;;;
      INCLUDE "macro.h"
      INCLUDE "vcs.h"
 
-;;; ram ;;;
-    SEG.U VARIABLES
-    ORG $80
+;;;; ram ;;;;
+    SEG.U VARIABLES ; uninit segment
+    ORG $80    ; RAM pos 0
 
-Var  .byte     ; RAM variable
+;;;; variables ;;;;
+JetXPos   .byte     ; P0 X position
+JetYPos   .byte     ; P0 Y position
 
-;;; move to rom start ;;;
+BomberXPos     .byte     ; P1 X pos
+BomberYPos     .byte     ; P1 Y pos
+
+;;;; move to rom start ;;;;
      SEG ROM
      ORG $F000
 
-;;; reset vcs REGS, RAM, TIA ;;;
-;;; game reset endpoint ;;;
+;;;; reset vcs REGS, RAM, TIA ;;;;
+;;;; game reset endpoint ;;;;
 Reset:
      CLEAN_START
 
 ;;;; init variables ;;;;
 Start:
      LDA #$82
-     STA COLUBK     ; set BG blue
+     STA COLUBK     ; set BG Blue
 
-     LDX #2
-     LDY #0
+     LDA #$7D
+     STA COLUPF     ; set playfield Green
+
+     LDA #1
+     STA CTRLPF     ; playfield reflection
+
+     ; set playfield graphics
+     LDA #$F0       ; 1111 0000
+     STA PF0        ; playfield part 0
+     
+     LDA #$FC       ; 1111 1100
+     STA PF1        ; playfield part 1
+     
+     LDA #0         ; 0000 0000
+     STA PF2        ; playfield part 2
+
+     LDA #10
+     STA JetYPos    ; JetYPos = 10
+
+     LDA #60
+     STA JetXPos    ; JetXPos = 60
+
+     LDX #2         ; enable bit
+     LDY #0         ; disable bit
 
 Frame:
 ;;;; VSYNC ;;;;
@@ -47,11 +74,16 @@ Frame:
      STY VBLANK
 
 ;;;; Visible picture ;;;;
-     REPEAT 192
-          STA WSYNC
-     REPEND
+Visible:
+     LDX #192
+.ScanLoop
+     STA WSYNC
+     DEX
+     BNE .ScanLoop
 
 ;;;; Overscan ;;;;
+     LDX #2
+     LDY #0
      STX VBLANK
 
      REPEAT 30

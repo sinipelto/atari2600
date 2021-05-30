@@ -14,10 +14,15 @@
     seg.u Variables
     org $80
 
-P0XPos        byte    ; sprite X coordinate
-P0YPos        byte    ; sprite Y coordinate
-P0XBegin      byte    ; start moving X pos from here
-P0XEnd        byte    ; stop moving X pos here and start again
+P0Height      .byte    ; player sprite height
+
+P0XPos        .byte    ; sprite X coordinate
+P0XBegin      .byte    ; start moving X pos from here
+P0XEnd        .byte    ; stop moving X pos here and start again
+
+P0YPos        .byte    ; sprite Y coordinate
+P0YBegin      .byte    ; start moving X pos from here
+P0YEnd        .byte    ; stop moving X pos here and start again
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Start our ROM code segment starting at $F000.
@@ -43,6 +48,12 @@ Reset:
     lda #70
     sta P0XPos     ; initialize player X coordinate
 
+    lda #86        ; screen half - player size
+    sta P0YPos     ; set plr y pos
+
+    lda #17
+    sta P0Height    ; set player height
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Start a new frame by configuring VBLANK and VSYNC
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -67,30 +78,6 @@ StartFrame:
     and #$7F       ; same as AND 01111111, forces bit 7 to zero
                    ; keeping the result positive
 
-; Do the border checking at this position 
-; where current P0XPos has just been loaded into register
-
-; ; first, check if we are inside the lower boundary
-; CheckLower:
-;     SEC             ; C = 1
-;     CMP P0XBegin        ; A == X ?
-;     BCS CheckUpper   ; A (pos) >= X (begin) -> jump
-;     ; if A (pos) < limit
-;     LDA P0XBegin    ; reset pos to min 
-;     STA P0XPos      ; and update memory
-;     JMP ContinueScanlines   ; already reset - skip upper boundary check
-
-; ; then, ensure we are under the upper boundary
-; CheckUpper:
-;     SEC
-;     CMP P0XEnd
-;     BCC ContinueScanlines   ; A (pos) < X (end)
-;     ; if A >= limit, reset
-;     LDA P0XBegin
-;     STA P0XPos
-
-; ; jump to here if checks pass
-; ContinueScanlines
     sec            ; set carry flag before subtraction
 
     sta WSYNC      ; wait for next scanline
@@ -124,29 +111,30 @@ DivideLoop:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Draw the 192 visible scanlines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    REPEAT 90
-        sta WSYNC  ; wait for empty scanlines
-    REPEND
+    ldx #192       ; A = 192
 
-    ldy #17          ; counter to draw 8 rows of bitmap
-DrawBitmap:
+Scanline:
+    txa            ; transfer X to A
+    sec            ; make sure carry flag is set
+    sbc P0YPos ; subtract sprite Y coordinate
+    cmp P0Height  ; are we inside the sprite height bounds?
+    bcc LoadBitmap ; if result < SpriteHeight, call subroutine
+    lda #0         ; else, set index to 0
+
+LoadBitmap:
+    tay
     lda P0Bitmap,Y ; load player bitmap slice of data
-    sta GRP0       ; set graphics for player 0 slice
-
-    lda P0Color,Y  ; load player color from lookup table
-    sta COLUP0     ; set color for player 0 slice
 
     sta WSYNC      ; wait for next scanline
 
-    dey
-    bne DrawBitmap ; repeat next scanline until finished
+    sta GRP0       ; set graphics for player 0 slice
 
-    lda #0
-    sta GRP0       ; disable P0 bitmap graphics
+    lda P0Color,Y  ; load player color from lookup table
 
-    REPEAT 94
-        sta WSYNC  ; wait for remaining empty scanlines
-    REPEND
+    sta COLUP0     ; set color for player 0 slice
+
+    dex
+    bne Scanline   ; repeat next scanline until finished
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Output 30 more VBLANK overscan lines to complete our frame
@@ -188,21 +176,6 @@ CheckP0Right:
 NoInput:
     ; fallback when no input was performed
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Increment X coordinate before next frame for animation.
-;; Ensure position stays in pre-set boundaries and reset position if does
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ; lda P0XPos
-    ; cmp P0XEnd
-    ; BPL ResetPos    ; if a > x, branch
-    ; inc P0XPos      ; a <= X, pos++
-    ; jmp StartFrame  ; goto next frame
-
-; if pos >= limit, reset the X position to start
-; ResetPos:
-;     LDX P0XBegin    ; read X = begin
-;     STX P0XPos      ; Pos = begin
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Loop to next frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -214,45 +187,45 @@ NoInput:
 ;; Lookup table for the player graphics bitmap
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Bitmap:
-    byte #%00000000
-    byte #%00010100
-    byte #%00010100
-    byte #%00010100
-    byte #%00010100
-    byte #%00010100
-    byte #%00011100
-    byte #%01011101
-    byte #%01011101
-    byte #%01011101
-    byte #%01011101
-    byte #%01111111
-    byte #%00111110
-    byte #%00010000
-    byte #%00011100
-    byte #%00011100
-    byte #%00011100
+    .byte #%00000000
+    .byte #%00010100
+    .byte #%00010100
+    .byte #%00010100
+    .byte #%00010100
+    .byte #%00010100
+    .byte #%00011100
+    .byte #%01011101
+    .byte #%01011101
+    .byte #%01011101
+    .byte #%01011101
+    .byte #%01111111
+    .byte #%00111110
+    .byte #%00010000
+    .byte #%00011100
+    .byte #%00011100
+    .byte #%00011100
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lookup table for the player colors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 P0Color:
-    byte #$00
-    byte #$F6
-    byte #$F2
-    byte #$F2
-    byte #$F2
-    byte #$F2
-    byte #$F2
-    byte #$C2
-    byte #$C2
-    byte #$C2
-    byte #$C2
-    byte #$C2
-    byte #$C2
-    byte #$3E
-    byte #$3E
-    byte #$3E
-    byte #$24
+    .byte #$00
+    .byte #$F6
+    .byte #$F2
+    .byte #$F2
+    .byte #$F2
+    .byte #$F2
+    .byte #$F2
+    .byte #$C2
+    .byte #$C2
+    .byte #$C2
+    .byte #$C2
+    .byte #$C2
+    .byte #$C2
+    .byte #$3E
+    .byte #$3E
+    .byte #$3E
+    .byte #$24
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Complete ROM size

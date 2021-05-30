@@ -1,21 +1,22 @@
-;;; processor ;;;
+;;;; processor ;;;;
      PROCESSOR 6502
 
-;;; assembly includes ;;;
+;;;; assembly includes ;;;;
      INCLUDE "macro.h"
      INCLUDE "vcs.h"
 
-;;; ram ;;;
+;;;; ram ;;;;
     SEG.U VARIABLES
     ORG $80
 
+;;;; variables ;;;;
 Var  .byte     ; RAM variable
 
-;;; move to rom start ;;;
+;;;; move to rom start ;;;;
      SEG ROM
      ORG $F000
 
-;;; reset vcs REGS, RAM, TIA ;;;
+;;;; reset vcs REGS, RAM, TIA ;;;;
 Reset:
      CLEAN_START
 
@@ -25,5 +26,7 @@ Reset:
 
 ;;;; Define rom end ;;;;
      ORG $FFFC
-     .word Reset
-     .word Reset    ; rom launch endpoint
+     .word Reset    ; FFFC,FFFE
+     .word Reset    ; FFFE,FFFF rom launch endpoint
+
+; at FFFF
